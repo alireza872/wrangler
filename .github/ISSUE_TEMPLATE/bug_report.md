@@ -1,10 +1,7 @@
 ---
 name: 🐛 Bug report
 about: Something's not quite right? You're in the right place!
-labels: user report
----
-
-### 🐛 Bug Report
+labels: user+989332828148
 
 <!-- 
   Please fill out each section below before submitting your 🐛 bug report.
