@@ -7,7 +7,8 @@ use std::process::Command;
 use std::str;
 
 use assert_cmd::prelude::*;
-use fixture::{Fixture, WranglerToml};
+
+use fixture::{rust, Fixture, WranglerToml};
 
 #[test]
 fn it_builds_webpack() {
@@ -311,6 +312,69 @@ fn it_builds_with_webpack_target_webworker() {
     fixture.create_wrangler_toml(wrangler_toml);
 
     build_creates_assets(&fixture, vec!["script.js"]);
+}
+
+#[test]
+fn it_builds_with_webpack_wasm_pack() {
+    let fixture = Fixture::new();
+
+    fixture.create_dir("crate");
+    fixture.create_file("crate/Cargo.toml", &rust::get_cargo_toml());
+
+    fixture.create_dir("crate/src");
+    fixture.create_file("crate/src/lib.rs", &rust::get_lib());
+    fixture.create_file("crate/src/utils.rs", &rust::get_utils());
+
+    let fixture_name = "test-wasm-pack-config";
+    let webpack_config = "webpack.config.js";
+
+    let wrangler_toml = WranglerToml::webpack_custom_config(fixture_name, webpack_config);
+
+    fixture.create_wrangler_toml(wrangler_toml);
+
+    fixture.create_file(
+        "webpack.config.js",
+        r#"
+        const path = require("path");
+        const WasmPackPlugin = require("@wasm-tool/wasm-pack-plugin");
+        
+        module.exports = {
+            "entry": "./index.js",
+            "target": "webworker",
+            plugins: [
+                new WasmPackPlugin({
+                    crateDirectory: path.resolve(__dirname, "crate"),
+                }),
+            ]
+        }
+    "#,
+    );
+
+    fixture.create_file(
+        "package.json",
+        r#"
+        {
+            "name": "webpack_wasm_pack",
+            "main": "./index.js",
+            "dependencies": {
+                "@wasm-tool/wasm-pack-plugin": "^1.1.0"
+            }
+        }
+        "#,
+    );
+
+    fixture.create_file(
+        "index.js",
+        r#"
+        import("./crate/pkg/index.js").then(module => {
+            module.greet();
+        });
+        "#,
+    );
+
+    fixture.set_config_home();
+
+    build_creates_assets(&fixture, vec!["script.js", "module.wasm"]);
 }
 
 fn build_creates_assets(fixture: &Fixture, script_names: Vec<&str>) {

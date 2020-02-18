@@ -1,6 +1,8 @@
+pub mod rust;
 mod wrangler_toml;
 pub use wrangler_toml::{EnvConfig, KvConfig, SiteConfig, WranglerToml};
 
+use std::env;
 use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
@@ -69,7 +71,7 @@ impl Fixture {
 
     pub fn create_dir(&self, name: &str) {
         let dir_path = self.get_path().join(name);
-        fs::create_dir(dir_path).unwrap();
+        fs::create_dir(&dir_path).unwrap();
     }
 
     pub fn create_empty_js(&self) {
@@ -116,6 +118,18 @@ impl Fixture {
         }
 
         ONE_TEST_AT_A_TIME.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    pub fn set_config_home(&self) {
+        // must set this environment variable for CI to pass
+        let config_home_env_var = if cfg!(target_os = "windows") {
+            "APPDATA"
+        } else {
+            "XDG_CONFIG_HOME"
+        };
+        let config_dir = self.get_path().join(".config");
+        fs::create_dir(&config_dir).unwrap();
+        env::set_var(config_home_env_var, config_dir.as_os_str());
     }
 }
 
